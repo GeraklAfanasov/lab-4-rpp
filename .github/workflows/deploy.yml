@@ -1,0 +1,35 @@
+name: Deploy Release to Pages  # Название для workflow: деплой релиза на Pages
+
+on:  # Триггер: при публикации релиза (published — после Draft > Publish)
+  release:
+    types: [published]
+
+jobs:  # Задачи: одна job — deploy
+  deploy:
+    runs-on: ubuntu-latest  # Среда: Ubuntu - дистр. Linux для быстрой сборки
+    steps:
+    - name: Checkout code  # Шаг 1: Клонируем репозиторий (включая main и теги)
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Полная история для тегов
+
+    - name: Get release tag  # Шаг 2: Извлекаем тег релиза (v1.0)
+      id: tag
+      run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Setup Pages  # Шаг 3: Настраиваем GitHub Pages (встроенная action)
+      uses: actions/configure-pages@v4
+
+    - name: Create version directory  # Шаг 4: Создаём /v{тег}/ и копируем файлы
+      run: |
+        mkdir -p "v${{ steps.tag.outputs.TAG }}"  # Директория v1.0
+        cp -r * "v${{ steps.tag.outputs.TAG }}/" || true  # Копируем всё (HTML, ru/, en/)
+
+    - name: Upload Pages artifact  # Шаг 5: Загружаем артефакт для Pages (с новой структурой)
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: .  # Вся ветка, включая /v{тег}/
+
+    - name: Deploy to GitHub Pages  # Шаг 6: Деплоим в gh-pages (автоматическая сборка)
+      id: deployment
+      uses: actions/deploy-pages@v4
