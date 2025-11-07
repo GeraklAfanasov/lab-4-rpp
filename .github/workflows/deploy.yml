@@ -22,8 +22,14 @@ jobs:  # Задачи: одна job — deploy
 
     - name: Create version directory  # Шаг 4: Создаём /v{тег}/ и копируем файлы
       run: |
-        mkdir -p "v${{ steps.tag.outputs.TAG }}"  # Директория v1.0
-        cp -r * "v${{ steps.tag.outputs.TAG }}/" || true  # Копируем всё (HTML, ru/, en/)
+        TAG=v${{ steps.tag.outputs.TAG }}
+        mkdir -p $TAG
+        # Копируем файлы, исключая директорию v{tag} (избегаем цикла)
+        for file in *; do
+          if [ "$file" != "$TAG" ] && [ -e "$file" ]; then
+            cp -r "$file" "$TAG/"
+          fi
+        done
 
     - name: Upload Pages artifact  # Шаг 5: Загружаем артефакт для Pages (с новой структурой)
       uses: actions/upload-pages-artifact@v3
