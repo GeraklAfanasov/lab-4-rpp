@@ -14,41 +14,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository  # клонируем весь репозиторий с историей
+      # 1️⃣ Клонируем весь репозиторий с историей (нужны теги)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get release tag  # получаем имя тега
+      # 2️⃣ Получаем имя тега из релиза
+      - name: Get release tag
         id: tag
         run: |
           RAW_TAG="${GITHUB_REF#refs/tags/}"
           echo "TAG=${RAW_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Prepare versioned site directory  # создаём каталог версии и копируем файлы
+      # 3️⃣ Создаём каталог версии и копируем файлы сайта
+      - name: Prepare versioned site directory
         run: |
           set -euo pipefail
           RAW="${{ steps.tag.outputs.TAG }}"
           if [[ "$RAW" == v* ]]; then TAG="$RAW"; else TAG="v$RAW"; fi
           echo "Using release directory: $TAG"
 
-          # временная директория для деплоя
+          # Временная директория для деплоя
           mkdir -p deploy_temp/$TAG
 
-          # копируем нужные файлы и папки
+          # Копируем файлы сайта в каталог версии
           cp -r index.html en ru deploy_temp/$TAG/
 
-      - name: Update root index.html  # редирект на последнюю версию
-        run: |
+          # Создаём редирект в index.html внутри версии на английскую локализацию
+          echo '<meta http-equiv="refresh" content="0; url=en/">' > deploy_temp/$TAG/index.html
+
+          # Обновляем корневой index.html, чтобы редиректить на последнюю версию
           echo '<meta http-equiv="refresh" content="0; url='${TAG}'/">' > deploy_temp/index.html
 
+      # 4️⃣ Настройка GitHub Pages
       - name: Configure Pages
         uses: actions/configure-pages@v4
 
-      - name: Publish to gh-pages  # публикуем каталог с версиями на gh-pages
+      # 5️⃣ Публикация на ветку gh-pages
+      - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           publish_dir: deploy_temp
           publish_branch: gh-pages
-          keep_files: true
+          keep_files: true  # сохраняем прошлые версии
