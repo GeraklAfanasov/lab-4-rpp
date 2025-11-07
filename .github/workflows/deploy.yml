@@ -5,6 +5,7 @@ on:
   release:
     types: [published]
 
+    
 jobs:
   deploy:
     # Права: оставляем явные права (
