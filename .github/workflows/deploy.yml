@@ -6,9 +6,10 @@ on:  # Триггер: при публикации релиза (published — �
 
 jobs:  # Задачи: одна job — deploy
   deploy:
-    permissions:  # Explicit права для OIDC-токена 
-      id-token: write  # Для deploy-pages: генерирует токен для записи в gh-pages
+    permissions:  # Explicit права для OIDC-токена и Pages 
+      id-token: write  # Для deploy-pages: генерирует токен для записи в gh-pages (OIDC)
       contents: read  # Для checkout: чтение кода и тегов
+      pages: write  # Для Pages: write-доступ к gh-pages 
     runs-on: ubuntu-latest  # Среда: Ubuntu - дистр. Linux для быстрой сборки
     steps:
     - name: Checkout code  # Шаг 1: Клонируем репозиторий (включая main и теги)
