@@ -61,7 +61,7 @@ jobs:
       - name: Publish version to gh-pages branch  # Шаг 5: публикуем созданный каталог в ветку gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          # Используем PERSONAL_GITHUB_TOKEN вместо GITHUB_TOKEN
+          # Используем PERSONAL_GITHUB_TOKEN 
           github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           # Публикуем только созданную версию
           publish_dir: ${{ steps.tag.outputs.TAG }}
