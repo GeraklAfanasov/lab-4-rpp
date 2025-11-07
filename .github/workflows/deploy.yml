@@ -7,20 +7,17 @@ on:
 jobs:
   deploy:
     permissions:
-      id-token: write
       contents: read
       pages: write
 
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Клонируем весь репозиторий с историей (нужны теги для версий)
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Полная история для тегов
+          fetch-depth: 0
 
-      # 2️⃣ Получаем имя тега из релиза и нормализуем (всегда v*)
       - name: Get release tag
         id: tag
         run: |
@@ -31,59 +28,29 @@ jobs:
             TAG="v$RAW_TAG"
           fi
           echo "TAG=$TAG" >> $GITHUB_OUTPUT
-          echo "Using release directory: $TAG"
 
-      # 3️⃣ Создаём каталог версии: копируем файлы сайта как есть (без перезаписи index.html)
       - name: Prepare versioned site directory
         run: |
-          set -euo pipefail
           TAG="${{ steps.tag.outputs.TAG }}"
-          
-          # Временная директория для деплоя
-          mkdir -p deploy_temp
-
-          # Создаём директорию версии и копируем файлы сайта (index.html остаётся оригинальным)
           mkdir -p deploy_temp/$TAG
-          cp -r index.html en ru deploy_temp/$TAG/  # Копируем как есть: index.html на ru с навигацией
-
-          # Создаём/обновляем корневой index.html с редиректом на ПОСЛЕДНЮЮ версию
-          # (это обеспечит, что корень всегда ведёт на свежую)
+          cp -r index.html en ru deploy_temp/$TAG/
           cat > deploy_temp/index.html << EOF
           <!DOCTYPE html>
           <html>
           <head>
             <meta http-equiv="refresh" content="0; url=$TAG/">
-            <title>Redirecting to latest version...</title>
           </head>
           <body>
-            <p>Redirecting to <a href="$TAG/">latest version ($TAG)</a>...</p>
+            <p>Redirecting to <a href="$TAG/">$TAG</a></p>
           </body>
           </html>
           EOF
-
-          # Добавляем .nojekyll для отключения Jekyll (чтобы все файлы публиковались)
           touch deploy_temp/.nojekyll
 
-      # 4️⃣ Настройка GitHub Pages (опционально, для валидации)
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v4
-
-      # 5️⃣ Публикация на ветку gh-pages (с сохранением прошлых версий)
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}  # Твой личный токен
+          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
           publish_dir: deploy_temp/
           publish_branch: gh-pages
-          keep_files: true  # Сохраняем прошлые версии (v1.2/, v1.3/ и т.д.)
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: "Deploy release $TAG to Pages"
-
-      # 6️⃣ Опциональный деbag: выводим структуру deploy_temp (для логов Actions)
-      - name: Debug deploy structure
-        if: always()
-        run: |
-          echo "Deploy structure:"
-          find deploy_temp -type f | head -20
+          keep_files: true
