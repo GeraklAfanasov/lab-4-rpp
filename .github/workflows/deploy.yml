@@ -1,68 +1,53 @@
-name: Deploy Release to Pages  # Название для workflow: деплой релиза на Pages
+name: Deploy Release to Pages
 
-# Триггер: когда релиз публикуется (published — после Draft → Publish)
 on:
   release:
-    types: [published]
+    types: [published]  # Запуск workflow при публикации релиза
 
 jobs:
   deploy:
-    # Права: оставляем явные права
     permissions:
-      id-token: write   
-      contents: read    # чтение репозитория (checkout, теги)
-      pages: write      # необходимость для работы с GitHub Pages
+      id-token: write
+      contents: read    # Доступ для чтения репозитория
+      pages: write      # Доступ для деплоя на GitHub Pages
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code  # Шаг 1: клонируем репозиторий с полной историей (нужны теги)
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Клонируем полный репозиторий с историей и тегами
 
-      - name: Get release tag  # Шаг 2: извлекаем имя тега из переменной окружения GITHUB_REF
+      - name: Get release tag
         id: tag
         run: |
-          # GITHUB_REF выглядит как refs/tags/<tag>
+          # Получаем имя тега из GITHUB_REF
           RAW_TAG="${GITHUB_REF#refs/tags/}"
-          # Выводим в outputs: шаги позже будут читать steps.tag.outputs.TAG
           echo "TAG=${RAW_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Create version directory and copy files  # Шаг 3: создаём каталог v{tag} и копируем в него сайт
+      - name: Prepare versioned site directory
         run: |
           set -euo pipefail
           RAW="${{ steps.tag.outputs.TAG }}"
-
-          # Если тег уже начинается с "v", используем его как есть; иначе добавляем "v" префикс
-          if [[ "$RAW" == v* ]]; then
-            TAG="$RAW"
-          else
-            TAG="v$RAW"
-          fi
-
+          # Добавляем префикс "v", если его нет
+          if [[ "$RAW" == v* ]]; then TAG="$RAW"; else TAG="v$RAW"; fi
           echo "Using release directory: $TAG"
 
-          # Создаём каталог с версией
-          mkdir -p "$TAG"
+          # Создаём временную директорию для деплоя
+          mkdir -p deploy_temp/$TAG
 
-          # Копируем все файлы и каталоги в $TAG, исключая сам каталог с версией и .git
-          shopt -s dotglob
-          for file in * .[!.]* ..?*; do
-            [ -e "$file" ] || continue
-            if [ "$file" = "$TAG" ]; then continue; fi
-            if [ "$file" = ".git" ]; then continue; fi
-            cp -r "$file" "$TAG/" || true
-          done
+          # Копируем только нужные файлы и каталоги
+          cp -r index.html en ru deploy_temp/$TAG/
 
-      - name: (Optional) Configure Pages  # Шаг 4
+      - name: Configure Pages
         uses: actions/configure-pages@v4
+        # Настройка Pages (необязательный шаг, нужен для новых workflow)
 
-      - name: Publish version to gh-pages branch  # Шаг 5: публикуем созданный каталог в ветку gh-pages
+      - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          # Используем PERSONAL_GITHUB_TOKEN 
-          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-          # Публикуем только созданную версию
-          publish_dir: ${{ steps.tag.outputs.TAG }}
-          publish_branch: gh-pages
+          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}  # Используем персональный токен
+          publish_dir: deploy_temp  # Публикуем все каталоги внутри временной директории
+          publish_branch: gh-pages  # Ветка для GitHub Pages
+          keep_files: true          # Сохраняем старые версии сайта
