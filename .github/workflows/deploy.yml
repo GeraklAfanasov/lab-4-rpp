@@ -1,65 +1,31 @@
-# Workflow для автоматизированного деплоя сайта на GitHub Pages при публикации релиза.
-# Обеспечивает доступ к версии по /v{тег}/, редирект корня на последнюю и сохранение старых версий.
-
-name: Deploy Release to Pages  # Название workflow для UI
-
-# Триггер: запуск только при публикации релиза (не draft)
+name: Deploy
 on:
-  release:
-    types: [published]
+  push:
+    branches: [ main ]
 
-# Джоб деплоя: права на чтение кода и запись на Pages
+# Джоб деплоя
 jobs:
   deploy:
     permissions:
-      contents: read  # Чтение репозитория
-      pages: write  # Деплой на Pages
-    runs-on: ubuntu-latest  # Linux-раннер для скриптов
+      contents: read
+      pages: write
+    runs-on: ubuntu-latest
 
-    # Шаги: последовательность действий
     steps:
-      # Клонирование repo с полной историей (для тегов)
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Извлечение тега релиза с нормализацией (добавление 'v' если нужно)
-      - name: Get release tag
-        id: tag
+      - name: Create test
         run: |
-          RAW_TAG="${GITHUB_REF#refs/tags/}"
-          if [[ "$RAW_TAG" == v* ]]; then
-            TAG="$RAW_TAG"
-          else
-            TAG="v$RAW_TAG"
-          fi
-          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          mkdir -p test
+          
+          cp -r index.html en ru test/ 2>/dev/null || true
+          ls -la test/
 
-      # Подготовка файлов: копия сайта в /v{тег}/, редирект корня, отключение Jekyll
-      - name: Prepare versioned site directory
-        run: |
-          TAG="${{ steps.tag.outputs.TAG }}"
-          mkdir -p deploy_temp/$TAG
-          cp -r index.html en ru deploy_temp/$TAG/
-          cat > deploy_temp/index.html << EOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta http-equiv="refresh" content="0; url=$TAG/">
-          </head>
-          <body>
-            <p>Redirecting to <a href="$TAG/">$TAG</a></p>
-          </body>
-          </html>
-          EOF
-          touch deploy_temp/.nojekyll
-
-      # Публикация: пуш в gh-pages с сохранением старых файлов
-      - name: Publish to gh-pages
+      - name: Deploy papki test na Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}  # Токен для авторизации
-          publish_dir: deploy_temp/  # Директория для деплоя
-          publish_branch: gh-pages  # Целевая ветка
-          keep_files: true  # Сохранение прошлых версий
+          github_token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          publish_dir: test/ 
+          publish_branch: gh-pages
+          keep_files: false 
