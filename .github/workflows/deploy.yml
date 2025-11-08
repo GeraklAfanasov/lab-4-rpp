@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p test
           
-          cp -r index.html en ru test/ 2>/dev/null || true
+          cp -r index.html en ru test/ 
           ls -la test/
 
       - name: Deploy papki test na Pages
